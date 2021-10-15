@@ -73,9 +73,6 @@ contract LEPA is ERC20Burnable,ERC20Storage {
         
         mintCalled=true;
     }
-
-    function purchase() payable external{
-    }
     
     receive() external payable{
     }
