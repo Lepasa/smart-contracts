@@ -58,8 +58,8 @@ contract LepaMarketingBucket is Pausable,AccessControlEnumerable {
 
     function _GrantAllocation(address allocationAdd, uint256 amount) internal {
         require(allocationAdd != address(0), "Invalid allocation address");
-        require(amount > 0, "Invalid allocation amount");
-        require(amount > users[allocationAdd].claimed, "Amount cannot be less than already claimed amount");
+        require(amount >= 0, "Invalid allocation amount");
+        require(amount >= users[allocationAdd].claimed, "Amount cannot be less than already claimed amount");
         require(allocatedSum - users[allocationAdd].allocation + amount <= maxLimit, "Limit exceeded");
 
         if(users[allocationAdd].allocation == 0) {                        
