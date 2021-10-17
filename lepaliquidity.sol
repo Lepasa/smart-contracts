@@ -48,7 +48,7 @@ contract LepaLiquidityBucket is Pausable,AccessControlEnumerable {
     }
 
     function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) external whenNotPaused {
-      require(hasRole(ALLOTTER_ROLE, _msgSender()),"Must have alloter role");
+      require(hasRole(ALLOTTER_ROLE, _msgSender()),"Must have allotter role");
       require(_allocationAdd.length == _amount.length);
       
       for (uint256 i = 0; i < _allocationAdd.length; ++i) {
