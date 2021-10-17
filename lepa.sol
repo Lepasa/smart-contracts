@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 import "./@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./@openzeppelin/contracts/access/Ownable.sol";
@@ -18,7 +18,7 @@ contract ERC20Storage is Ownable, ArbitraryTokenStorage {
         require(token.transfer(owner(), balance), "Transfer failed");
     }
 
-    function unlockETH() public virtual onlyOwner{
+    function unlockETH() external virtual onlyOwner{
         uint256 etherBalance = address(this).balance;
         (bool success,  ) = msg.sender.call{value: etherBalance}("");
         require(success, "Transfer failed.");
@@ -28,23 +28,23 @@ contract ERC20Storage is Ownable, ArbitraryTokenStorage {
 contract LEPA is ERC20Burnable,ERC20Storage {
     bool mintCalled=false;
     
-    address public _strategicBucketAddress;
-    address public _teamBucketAddress;
-    address public _marketingBucketAddress;
-    address public _advisersBucketAddress;
-    address public _foundationBucketAddress;
-    address public _liquidityBucketAddress;
+    address public StrategicBucketAddress;
+    address public TeamBucketAddress;
+    address public MarketingBucketAddress;
+    address public AdvisersBucketAddress;
+    address public FoundationBucketAddress;
+    address public LiquidityBucketAddress;
 
-    uint256 public strategicLimit =  39 * (10**6) * 10**decimals();
-    uint256 public publicSaleLimit = 1 * (10**6) * 10**decimals();   
-    uint256 public teamLimit =  10 * (10**6) * 10**decimals(); 
-    uint256 public marketingLimit =  25 * (10**6) * 10**decimals();
-    uint256 public advisersLimit =  5 * (10**6) * 10**decimals();  
-    uint256 public foundationLimit =  10 * (10**6) * 10**decimals(); 
-    uint256 public liquidityLimit = 10 * (10**6) * 10**decimals();   
+    uint256 public constant StrategicLimit =  39 * (10**6) * 10**18;
+    uint256 public constant PublicSaleLimit = 1 * (10**6) * 10**18;   
+    uint256 public constant TeamLimit =  10 * (10**6) * 10**18; 
+    uint256 public constant MarketingLimit =  25 * (10**6) * 10**18;
+    uint256 public constant AdvisersLimit =  5 * (10**6) * 10**18;  
+    uint256 public constant FoundationLimit =  10 * (10**6) * 10**18; 
+    uint256 public constant LiquidityLimit = 10 * (10**6) * 10**18;   
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-        _mint(owner(), publicSaleLimit);
+        _mint(owner(), PublicSaleLimit);
     }
 
     function setAllocation(
@@ -54,26 +54,26 @@ contract LEPA is ERC20Burnable,ERC20Storage {
         address advisersBucketAddress,
         address foundationBucketAddress,
         address liquidityBucketAddress
-        ) public onlyOwner {
+        ) external onlyOwner {
         require(mintCalled == false, "Allocation already done.");
 
-        _strategicBucketAddress = strategicBucketAddress;
-        _teamBucketAddress = teamBucketAddress;
-        _marketingBucketAddress = marketingBucketAddress;
-        _advisersBucketAddress = advisersBucketAddress;
-        _foundationBucketAddress = foundationBucketAddress;
-        _liquidityBucketAddress = liquidityBucketAddress;
+        StrategicBucketAddress = strategicBucketAddress;
+        TeamBucketAddress = teamBucketAddress;
+        MarketingBucketAddress = marketingBucketAddress;
+        AdvisersBucketAddress = advisersBucketAddress;
+        FoundationBucketAddress = foundationBucketAddress;
+        LiquidityBucketAddress = liquidityBucketAddress;
         
-        _mint(_strategicBucketAddress, strategicLimit);
-        _mint(_teamBucketAddress, teamLimit);
-        _mint(_marketingBucketAddress, marketingLimit);
-        _mint(_advisersBucketAddress, advisersLimit);
-        _mint(_foundationBucketAddress, foundationLimit);
-        _mint(_liquidityBucketAddress, liquidityLimit);
+        _mint(StrategicBucketAddress, StrategicLimit);
+        _mint(TeamBucketAddress, TeamLimit);
+        _mint(MarketingBucketAddress, MarketingLimit);
+        _mint(AdvisersBucketAddress, AdvisersLimit);
+        _mint(FoundationBucketAddress, FoundationLimit);
+        _mint(LiquidityBucketAddress, LiquidityLimit);
         
         mintCalled=true;
     }
-    
+
     receive() external payable{
     }
 }

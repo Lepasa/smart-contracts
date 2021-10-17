@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 import "./@openzeppelin/contracts/security/Pausable.sol";
-import "./@openzeppelin/contracts/access/Ownable.sol";
-import "./@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 interface TransferLepa {
-    function transfer(address recipient,uint256 amount) external;
+    function transfer(address recipient,uint256 amount) external returns (bool);
 }
 
-contract LepaFoundationBucket is Pausable,Ownable {
-    using SafeMath for uint256;
+contract LepaFoundationBucket is Pausable,AccessControlEnumerable {
     TransferLepa private _lepaToken;
 
     struct Bucket {
@@ -21,28 +19,36 @@ contract LepaFoundationBucket is Pausable,Ownable {
 
     mapping( address => Bucket) public users;
 
-    uint256 public maxLimit =  10 * (10**6) * 10**18;
-    uint256 public vestingDays = 365;
+    uint256 public constant maxLimit =  10 * (10**6) * 10**18;
+    uint256 public constant vestingSeconds = 365 * 86400;
+    bytes32 public constant ALLOTTER_ROLE = keccak256("ALLOTTER_ROLE");
     uint256 public totalMembers;    
     uint256 public allocatedSum;
-    uint256 public contractCreation;
+    uint256 public vestingStartEpoch;
 
     event GrantAllocationEvent(address allcationAdd, uint256 amount);    
-    event ClaimBalanceEvent(address addr, uint256 balance);
+    event ClaimAllocationEvent(address addr, uint256 balance);
+    event VestingStartedEvent(uint256 epochtime);
 
     constructor(TransferLepa tokenAddress)  {
+        require(address(tokenAddress) != address(0), "Token Address cannot be address 0");
         _lepaToken = tokenAddress;
         totalMembers = 0;
         allocatedSum = 0;
-        contractCreation = 0;
+        vestingStartEpoch = 0;
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(ALLOTTER_ROLE, _msgSender());
     }
 
-    function setCreationTime(uint256 epochtime) public onlyOwner {
-        require(contractCreation == 0, "Vesting already started.");
-        contractCreation = epochtime;
+    function startVesting(uint256 epochtime) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+        require(vestingStartEpoch == 0, "Vesting already started.");
+        vestingStartEpoch = epochtime;
+        emit VestingStartedEvent(epochtime);
     }
 
-    function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) public onlyOwner whenNotPaused {
+    function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) external whenNotPaused {
+      require(hasRole(ALLOTTER_ROLE, _msgSender()),"Must have alloter role");
       require(_allocationAdd.length == _amount.length);
       
       for (uint256 i = 0; i < _allocationAdd.length; ++i) {
@@ -54,50 +60,43 @@ contract LepaFoundationBucket is Pausable,Ownable {
         require(allocationAdd != address(0), "Invalid allocation address");
         require(amount > 0, "Invalid allocation amount");
         require(amount > users[allocationAdd].claimed, "Amount cannot be less than already claimed amount");
-        require(allocatedSum.sub(users[allocationAdd].allocation).add(amount) <= maxLimit, "Limit exceed");
+        require(allocatedSum - users[allocationAdd].allocation + amount <= maxLimit, "Limit exceeded");
 
         if(users[allocationAdd].allocation == 0) {                        
-            totalMembers = totalMembers.add(1);
+            totalMembers++;
         }
-        allocatedSum = allocatedSum.sub(users[allocationAdd].allocation).add(amount);
+        allocatedSum = allocatedSum - users[allocationAdd].allocation + amount;
         users[allocationAdd].allocation = amount;        
         emit GrantAllocationEvent(allocationAdd, amount);        
     }
 
     function GetClaimableBalance(address userAddr) public view returns (uint256) {
-        require(contractCreation > 0, "Vesting not initialzed");
-        uint256 claimableBal = 0;
-        Bucket memory userBucket = users[userAddr];        
-        uint256 lockingTimestamp = contractCreation.add(31536000); // 1 Year locking period 365 * 86400 (Seconds)
-        require(block.timestamp > lockingTimestamp, "Reserved for 1 Year");      
+        require(vestingStartEpoch > 0, "Vesting not initialized");
+        
+        uint256 lockingTimestamp = vestingStartEpoch + 31536000; // 1 Year locking period 365 * 86400 (Seconds)
+        require(block.timestamp > lockingTimestamp, "Reserved for 1 Year");        
+
+        Bucket memory userBucket = users[userAddr];
         require(userBucket.allocation != 0, "Address is not registered");
         
-        uint256 vestingAmount = CalculateVestingAmount(userBucket.allocation, vestingDays);
-        claimableBal = vestingAmount.mul(block.timestamp - lockingTimestamp);
+        uint256 vestingPerSecond = userBucket.allocation/vestingSeconds;
+        uint256 totalClaimableBal = vestingPerSecond * (block.timestamp - lockingTimestamp);
 
-        if(claimableBal > userBucket.allocation){
-            claimableBal = userBucket.allocation;
+        if(totalClaimableBal > userBucket.allocation) {
+            totalClaimableBal = userBucket.allocation;
         }
 
-        require(claimableBal > userBucket.claimed, "Insufficient claim amount");
-        return claimableBal.sub(userBucket.claimed);
+        require(totalClaimableBal > userBucket.claimed, "Vesting threshold reached");
+        return totalClaimableBal - userBucket.claimed;
     }
 
-    function ProcessClaim() public whenNotPaused {
+    function ProcessClaim() external whenNotPaused {
         uint256 claimableBalance = GetClaimableBalance(_msgSender());
         require(claimableBalance > 0, "Claim amount invalid.");
         
-        users[_msgSender()].claimed = users[_msgSender()].claimed.add(claimableBalance);
-        _lepaToken.transfer(_msgSender(), claimableBalance);
-        emit ClaimBalanceEvent(_msgSender(), claimableBalance);
-    }
-
-    function CalculateVestingAmount(uint256 amount, uint256 vdays) private pure returns (uint256) {        
-        return amount.div(GetDaysTimstamp(vdays));
-    }
-
-    function GetDaysTimstamp(uint256 vdays) private pure returns (uint256) {        
-        return vdays.mul(86400); // 1 day = 86400 seconds        
+        users[_msgSender()].claimed = users[_msgSender()].claimed + claimableBalance;
+        emit ClaimAllocationEvent(_msgSender(), claimableBalance);
+        require(_lepaToken.transfer(_msgSender(), claimableBalance), "Token transfer failed!"); 
     }
     
     /* Dont accept eth  */
@@ -105,11 +104,13 @@ contract LepaFoundationBucket is Pausable,Ownable {
         revert("The contract does not accept direct payment.");
     }
 
-    function pause() public onlyOwner{
+    function pause() external{
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
         _pause();
     }
 
-    function unpause() public onlyOwner{
+    function unpause() external{
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
         _unpause();
     }
 }
