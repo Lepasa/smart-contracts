@@ -79,8 +79,7 @@ contract LepaAdvisersBucket is Pausable,AccessControlEnumerable {
         Bucket memory userBucket = users[userAddr];
         require(userBucket.allocation != 0, "Address is not registered");
         
-        uint256 vestingPerSecond = userBucket.allocation/vestingSeconds;
-        uint256 totalClaimableBal = vestingPerSecond * (block.timestamp - lockingTimestamp);
+        uint256 totalClaimableBal = (block.timestamp - lockingTimestamp) * userBucket.allocation/ vestingSeconds;
 
         if(totalClaimableBal > userBucket.allocation) {
             totalClaimableBal = userBucket.allocation;
