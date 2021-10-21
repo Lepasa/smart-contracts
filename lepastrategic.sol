@@ -30,14 +30,17 @@ contract LepaStrategicBucket is Pausable,AccessControlEnumerable {
     event ClaimAllocationEvent(address addr, uint256 balance);
     event VestingStartedEvent(uint256 epochtime);
 
-    constructor(TransferLepa tokenAddress)  {
+    constructor(TransferLepa tokenAddress,uint256 epochtime)  {
         require(address(tokenAddress) != address(0), "Token Address cannot be address 0");
         _lepaToken = tokenAddress;
         totalMembers = 0;
         allocatedSum = 0;
-        vestingStartEpoch = 0;
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(ALLOTTER_ROLE, _msgSender());
+
+        vestingStartEpoch = epochtime;
+        if (vestingStartEpoch >0)
+        emit VestingStartedEvent(epochtime);
     }
 
     function startVesting(uint256 epochtime) external {
@@ -77,9 +80,7 @@ contract LepaStrategicBucket is Pausable,AccessControlEnumerable {
         require(userBucket.allocation != 0, "Address is not registered");
         
         uint256 totalClaimableBal = userBucket.allocation/10; // 10% of allocation
-        uint256 vestingPerSecond = (userBucket.allocation - totalClaimableBal)/vestingSeconds;
-
-        totalClaimableBal = totalClaimableBal + (vestingPerSecond * (block.timestamp - vestingStartEpoch));
+        totalClaimableBal = totalClaimableBal + ((block.timestamp - vestingStartEpoch)*(userBucket.allocation - totalClaimableBal)/vestingSeconds);
 
         if(totalClaimableBal > userBucket.allocation) {
             totalClaimableBal = userBucket.allocation;

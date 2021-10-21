@@ -3,13 +3,13 @@
 pragma solidity 0.8.9;
 
 import "./@openzeppelin/contracts/security/Pausable.sol";
-import "./@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "./@openzeppelin/contracts/access/Ownable.sol";
 
 interface TransferLepa {
     function transfer(address recipient,uint256 amount) external returns (bool);
 }
 
-contract LepaMarketingBucket is Pausable,AccessControlEnumerable {    
+contract LepaMarketingBucket is Pausable,Ownable {    
     TransferLepa private _lepaToken;
 
     struct Bucket {
@@ -30,25 +30,24 @@ contract LepaMarketingBucket is Pausable,AccessControlEnumerable {
     event ClaimAllocationEvent(address addr, uint256 balance);
     event VestingStartedEvent(uint256 epochtime);
 
-    constructor(TransferLepa tokenAddress)  {
+    constructor(TransferLepa tokenAddress,uint256 epochtime)  {
         require(address(tokenAddress) != address(0), "Token Address cannot be address 0");
         _lepaToken = tokenAddress;
         totalMembers = 0;
         allocatedSum = 0;
-        vestingStartEpoch = 0;
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setupRole(ALLOTTER_ROLE, _msgSender());
+
+        vestingStartEpoch = epochtime;
+        if (vestingStartEpoch >0)
+        emit VestingStartedEvent(epochtime);
     }
 
-    function startVesting(uint256 epochtime) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+    function startVesting(uint256 epochtime) external onlyOwner{
         require(vestingStartEpoch == 0, "Vesting already started.");
         vestingStartEpoch = epochtime;
         emit VestingStartedEvent(epochtime);
     }
 
-    function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) external whenNotPaused {
-      require(hasRole(ALLOTTER_ROLE, _msgSender()),"Must have allotter role");
+    function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) external whenNotPaused onlyOwner{
       require(_allocationAdd.length == _amount.length);
       
       for (uint256 i = 0; i < _allocationAdd.length; ++i) {
@@ -77,9 +76,7 @@ contract LepaMarketingBucket is Pausable,AccessControlEnumerable {
         require(userBucket.allocation != 0, "Address is not registered");
         
         uint256 totalClaimableBal = userBucket.allocation/10; // 10% of allocation
-        uint256 vestingPerSecond = (userBucket.allocation - totalClaimableBal)/vestingSeconds;
-
-        totalClaimableBal = totalClaimableBal + (vestingPerSecond * (block.timestamp - vestingStartEpoch));
+        totalClaimableBal = totalClaimableBal + ((block.timestamp - vestingStartEpoch)*(userBucket.allocation - totalClaimableBal)/vestingSeconds);
 
         if(totalClaimableBal > userBucket.allocation) {
             totalClaimableBal = userBucket.allocation;
@@ -103,13 +100,11 @@ contract LepaMarketingBucket is Pausable,AccessControlEnumerable {
         revert("The contract does not accept direct payment.");
     }
 
-    function pause() external{
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+    function pause() external onlyOwner{
         _pause();
     }
 
-    function unpause() external{
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+    function unpause() external onlyOwner{
         _unpause();
     }
 }

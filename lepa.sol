@@ -44,7 +44,7 @@ contract LEPA is ERC20Burnable,ERC20Storage {
     uint256 public constant LiquidityLimit = 10 * (10**6) * 10**18;   
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-        _mint(owner(), PublicSaleLimit);
+        _mint(_msgSender(), PublicSaleLimit);
     }
 
     function setAllocation(
@@ -54,7 +54,7 @@ contract LEPA is ERC20Burnable,ERC20Storage {
         address advisersBucketAddress,
         address foundationBucketAddress,
         address liquidityBucketAddress
-        ) external onlyOwner {
+        ) external onlyOwner{
         require(mintCalled == false, "Allocation already done.");
 
         StrategicBucketAddress = strategicBucketAddress;
@@ -70,7 +70,7 @@ contract LEPA is ERC20Burnable,ERC20Storage {
         _mint(AdvisersBucketAddress, AdvisersLimit);
         _mint(FoundationBucketAddress, FoundationLimit);
         _mint(LiquidityBucketAddress, LiquidityLimit);
-        
+
         mintCalled=true;
     }
 
