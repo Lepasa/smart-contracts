@@ -3,13 +3,13 @@
 pragma solidity 0.8.9;
 
 import "./@openzeppelin/contracts/security/Pausable.sol";
-import "./@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "./@openzeppelin/contracts/access/Ownable.sol";
 
 interface TransferLepa {
     function transfer(address recipient,uint256 amount) external returns (bool);
 }
 
-contract LepaStrategicBucket is Pausable,AccessControlEnumerable {
+contract LepaStrategicBucket is Pausable,Ownable {
     TransferLepa private _lepaToken;
 
     struct Bucket {
@@ -21,7 +21,6 @@ contract LepaStrategicBucket is Pausable,AccessControlEnumerable {
 
     uint256 public constant maxLimit =  39 * (10**6) * 10**18;
     uint256 public constant vestingSeconds = 365 * 86400;
-    bytes32 public constant ALLOTTER_ROLE = keccak256("ALLOTTER_ROLE");
     uint256 public totalMembers;    
     uint256 public allocatedSum;
     uint256 public vestingStartEpoch;
@@ -35,23 +34,18 @@ contract LepaStrategicBucket is Pausable,AccessControlEnumerable {
         _lepaToken = tokenAddress;
         totalMembers = 0;
         allocatedSum = 0;
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setupRole(ALLOTTER_ROLE, _msgSender());
-
         vestingStartEpoch = epochtime;
         if (vestingStartEpoch >0)
         emit VestingStartedEvent(epochtime);
     }
 
-    function startVesting(uint256 epochtime) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+    function startVesting(uint256 epochtime) external onlyOwner{
         require(vestingStartEpoch == 0, "Vesting already started.");
         vestingStartEpoch = epochtime;
         emit VestingStartedEvent(epochtime);
     }
 
-    function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) external whenNotPaused {
-      require(hasRole(ALLOTTER_ROLE, _msgSender()),"Must have allotter role");
+    function GrantAllocation(address[] calldata _allocationAdd, uint256[] calldata _amount) external whenNotPaused onlyOwner{
       require(_allocationAdd.length == _amount.length);
       
       for (uint256 i = 0; i < _allocationAdd.length; ++i) {
@@ -104,13 +98,11 @@ contract LepaStrategicBucket is Pausable,AccessControlEnumerable {
         revert("The contract does not accept direct payment.");
     }
 
-    function pause() external{
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+    function pause() external onlyOwner{
         _pause();
     }
 
-    function unpause() external{
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),"Must have admin role");
+    function unpause() external onlyOwner{
         _unpause();
     }
 }

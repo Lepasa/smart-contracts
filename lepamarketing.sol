@@ -21,7 +21,6 @@ contract LepaMarketingBucket is Pausable,Ownable {
 
     uint256 public constant maxLimit =  25 * (10**6) * 10**18;
     uint256 public constant vestingSeconds = 365 * 86400;
-    bytes32 public constant ALLOTTER_ROLE = keccak256("ALLOTTER_ROLE");
     uint256 public totalMembers;    
     uint256 public allocatedSum;
     uint256 public vestingStartEpoch;
