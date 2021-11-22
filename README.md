@@ -16,7 +16,7 @@ Foundational Reserve 			      - 10% (After 1 year, Daily vesting over 365 days.)
 
 Marketing/Business Development 	- 25% (10% vested on listing, Then daily vesting over 365 days.)
 
-Liquidity 						          - 10% (20% vested before listing, Then daily vesting over 365 days.)
+Liquidity 						          - 10% of the total supply is allocated for liquidity.
 
 Team 							              - 10% (After 1 year, Daily vesting over 365 days.)
 

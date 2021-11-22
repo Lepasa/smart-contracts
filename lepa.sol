@@ -1,3 +1,7 @@
+/*
+Contract Security Audited by Certik : https://www.certik.org/projects/lepasa
+*/
+
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.9;
@@ -16,12 +20,6 @@ contract ERC20Storage is Ownable, ArbitraryTokenStorage {
         
         require(balance > 0, "Contract has no balance");
         require(token.transfer(owner(), balance), "Transfer failed");
-    }
-
-    function unlockETH() external virtual onlyOwner{
-        uint256 etherBalance = address(this).balance;
-        (bool success,  ) = msg.sender.call{value: etherBalance}("");
-        require(success, "Transfer failed.");
     }
 }
 
@@ -72,8 +70,5 @@ contract LEPA is ERC20Burnable,ERC20Storage {
         _mint(LiquidityBucketAddress, LiquidityLimit);
 
         mintCalled=true;
-    }
-
-    receive() external payable{
     }
 }

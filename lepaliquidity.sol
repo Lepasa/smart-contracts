@@ -1,3 +1,7 @@
+/*
+Contract Security Audited by Certik : https://www.certik.org/projects/lepasa
+*/
+
 // SPDX-License-Identifier: GPL-3.0-only
 
 pragma solidity 0.8.9;
@@ -43,11 +47,6 @@ contract LepaLiquidityBucket is Pausable,Ownable {
         userAllocation[allocationAdd] += amount;
         emit GrantAllocationEvent(allocationAdd, amount);
         require(_lepaToken.transfer(allocationAdd, amount), "Token transfer failed!");
-    }
-
-    /* Dont accept eth  */
-    receive() external payable {
-        revert("The contract does not accept direct payment.");
     }
 
     function pause() external onlyOwner{
